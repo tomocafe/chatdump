@@ -60,6 +60,7 @@ See `chatdump --help` for all available options, but here are the highlights:
 
 * `-B`: Change the boilerplate text for this invocation
 
-## Language detection
+## Requirements
 
-If the `pygments` module is installed, `chatdump` will attempt to add the language specifier to the Markdown code fence.
+* Python 3.x
+* `pygments` module (optional, for language detection)
