@@ -59,3 +59,7 @@ See `chatdump --help` for all available options, but here are the highlights:
   > Please don't include entire files in your response. Rather include only snippets of code that require highlighting or modification.
 
 * `-B`: Change the boilerplate text for this invocation
+
+## Language detection
+
+If the `pygments` module is installed, `chatdump` will attempt to add the language specifier to the Markdown code fence.
