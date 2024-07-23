@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import argparse
+from pathlib import Path
+
+try:
+    from pygments.lexers import guess_lexer, guess_lexer_for_filename
+    HAS_PYGMENTS = True
+except ImportError:
+    HAS_PYGMENTS = False
+
+PYGMENT_GUESS_SIZE = 1024
+
+BOILERPLATE = "Please don't include entire files in your response. Rather include only snippets of code that require highlighting or modification."
+
+def is_relative_to(path, base):
+    try:
+        Path(path).relative_to(base)
+        return True
+    except ValueError:
+        return False
+
+def find_root(args):
+    files = args.files + (args.add_to_tree or [])
+    if args.relative_to_dir:
+        root = Path(args.relative_to_dir).absolute()
+    else:
+        root = Path(files[0]).absolute().parent
+        for file in files[1:]:
+            file = Path(file).absolute()
+            while not is_relative_to(file, root):
+                root = root.parent
+    return root
+
+def print_file_tree(context_files, root):
+    # print tree
+    for file in sorted(context_files, key=lambda f: len(Path(f).parents)):
+        file = Path(file).absolute()
+        print(f"{file.relative_to(root)}")
+
+def language_specifier(fd, filename):
+    lang = ''
+    if HAS_PYGMENTS:
+        try:
+            try:
+                lang = guess_lexer_for_filename(filename, fd.read(PYGMENT_GUESS_SIZE)).aliases[0]
+            except:
+                fd.seek(0)
+                lang = guess_lexer(fd.read(PYGMENT_GUESS_SIZE)).aliases[0]
+        except:
+            pass
+        finally:
+            fd.seek(0)
+    return lang
+
+def dump(args):
+    root = find_root(args)
+    print(f"Here {'is' if len(args.files) == 1 else 'are'} {len(args.files)} relevant file{'s' if len(args.files) > 1 else ''}", end='')
+    context_files = args.files + (args.add_to_tree or [])
+    if len(context_files) > 1:
+        print(f" and {'their' if len(args.files) > 1 else 'its'} location{'s' if len(args.files) > 1 else ''} in the project:\n")
+        print('```')
+        print_file_tree(context_files, root)
+        print('```\n')
+    else:
+        print(':\n')
+    for file in args.files:
+        filename = str(Path(file).absolute().relative_to(Path(root).absolute()))
+        print(f"**{filename}:**\n")
+        with open(file, 'r') as fd:
+            print(f"```{language_specifier(fd, file)}") 
+            print(fd.read().strip())
+        print('```\n')
+    if args.boilerplate or args.boilerplate_text:
+        print(args.boilerplate_text or BOILERPLATE)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--relative-to-dir', type=str, help='The directory to which the paths are relative')
+    parser.add_argument('files', type=str, nargs='+', help='Files to include')
+    parser.add_argument('-t', '--add-to-tree', type=str, action='append', help='Additional files to include in the file tree')
+    parser.add_argument('-b', '--boilerplate', action='store_true', help='Add boilerplate text to the end of the output')
+    parser.add_argument('-B', '--boilerplate-text', type=str, help='Boilerplate text to use at the end of the output')
+    args = parser.parse_args()
+    dump(args)
+
+if __name__ == '__main__':
+    main()
+
